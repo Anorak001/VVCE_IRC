@@ -3,11 +3,12 @@ name: Deploy Jekyll with GitHub Pages
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -15,7 +16,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v2
         with:
-          ruby-version: 2.x # Adjust the Ruby version if needed
+          ruby-version: 2.x
 
       - name: Install dependencies
         run: |
@@ -29,6 +30,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./_site
-          cname: your-custom-domain.com # Optional, remove if not using a custom domain
+          publish_dir: ./jekyll-site/_site
+          cname: your-custom-domain.com
           commit_message: 'Deploy to GitHub Pages'
