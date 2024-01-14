@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVCE-IRC</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #logo {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 50%;
+        }
+
+        h1 {
+            color: #4CAF50;
+        }
+
+        #username-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #4CAF50;
+        }
+
+        #login-container, #chat-container {
+            margin-top: 20px;
+        }
+
+        input {
+            padding: 5px;
+            margin: 5px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            max-height: 300px;
+            background-color: #333333;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        #messages li {
+            margin: 5px 0;
+        }
+
+        #form {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #input {
+            flex: 1;
+            padding: 5px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <img id="logo" src="{{ url_for('static', filename='vvce_logo.jpg') }}" alt="VVCE Logo">
+    <h1>VVCE-IRC</h1>
+
+    <div id="username-display"></div>
+
+    <div id="login-container">
+        <label for="username" style="color: #4CAF50;">Enter your username:</label>
+        <input type="text" id="username" autocomplete="off" />
+        <label for="password" style="color: #4CAF50;">Enter your password:</label>
+        <input type="password" id="password" />
+        <button onclick="submitLogin()">Login</button>
+    </div>
+
+    <div id="chat-container" style="display:none;">
+        <ul id="messages"></ul>
+        <form id="form">
+            <input id="input" autocomplete="off" />
+            <button type="button" onclick="sendMessage()">Send</button>
+        </form>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('receive_message', function(data) {
+            var messages = document.getElementById('messages');
+            var li = document.createElement('li');
+            li.appendChild(document.createTextNode(data.username + ': ' + data.message));
+            messages.appendChild(li);
+        });
+
+        function submitLogin() {
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+
+            // Check if username and password match
+            if (username.trim() !== "" && password === "vvce") {
+                // Check if the username exists (replace this with your logic)
+                checkUsernameExists(username)
+                    .then((exists) => {
+                        if (exists) {
+                            document.getElementById('login-container').style.display = 'none';
+                            document.getElementById('chat-container').style.display = 'block';
+                            document.getElementById('username-display').innerText = 'Logged in as: ' + username;
+                            socket.emit('set_username', username);
+                        } else {
+                            // Display popup message
+                            alertAndHide('Incorrect username. Please enter a valid username.');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        alert('Error checking username. Please try again.');
+                    });
+            } else {
+                alert('Invalid username or password. Please try again.');
+            }
+        }
+
+        async function checkUsernameExists(username) {
+            try {
+                // Fetch usernames from the file
+                const response = await fetch('{{ url_for('static', filename='usernames.txt') }}');
+                const usernamesText = await response.text();
+
+                // Split the text into an array of usernames
+                const usernamesArray = usernamesText.split('\n').filter(Boolean); // Filter out empty strings
+
+                // Log usernames for debugging (remove this in production)
+                console.log('Usernames loaded:', usernamesArray);
+
+                // Check if the username exists
+                return usernamesArray.map(username => username.trim()).includes(username);
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        function sendMessage() {
+            var input = document.getElementById('input');
+            var message = input.value;
+            input.value = '';
+
+            var username = document.getElementById('username').value;
+            socket.emit('send_message', { 'username': username, 'message': message });
+        }
+
+        // Prevent default form submission to avoid page refresh
+        document.getElementById('form').addEventListener('submit', function (e) {
+            e.preventDefault();
+        });
+
+        function alertAndHide(message) {
+            alert(message);
+            setTimeout(function() {
+                document.getElementById('login-container').style.display = 'block';
+                document.getElementById('chat-container').style.display = 'none';
+                document.getElementById('username-display').innerText = '';
+            }, 5000); // Hide after 5 seconds
+        }
+
+        function logout() {
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('chat-container').style.display = 'none';
+            document.getElementById('username-display').innerText = '';
+        }
+    </script>
+</body>
+</html>
